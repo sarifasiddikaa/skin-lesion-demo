@@ -188,7 +188,7 @@ st.markdown("""
 
 st.markdown("""
 <div class="topbar">
-    <span class="logo">🩺 DermaScan AI</span>
+    <span class="logo">🩺 MelaXAI </span>
     <span class="tag">Skin lesion risk classifier</span>
 </div>
 """, unsafe_allow_html=True)
