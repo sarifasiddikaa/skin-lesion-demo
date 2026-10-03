@@ -140,7 +140,7 @@ def predict(fusion_model, mb_model, image, sex, site, personal_hx, family_hx, ag
 # ============================= UI =============================
 
 st.set_page_config(
-    page_title="DermaScan AI — Lesion Risk Classifier",
+    page_title="MELAXAI — Lesion Risk Classifier",
     page_icon="🩺",
     layout="wide",
 )
