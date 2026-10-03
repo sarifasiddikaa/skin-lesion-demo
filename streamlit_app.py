@@ -125,7 +125,7 @@ def predict(fusion_model, mb_model, image, sex, site, personal_hx, family_hx, ag
     baseline_img = torch.zeros_like(img_t)
     baseline_meta = torch.zeros_like(meta_t)
     target_class = 1 if fusion_prob >= 0.5 else 0
-        attr_img, attr_meta = ig.attribute((img_t, meta_t), baselines=(baseline_img, baseline_meta),
+    attr_img, attr_meta = ig.attribute((img_t, meta_t), baselines=(baseline_img, baseline_meta),
                                         target=target_class, n_steps=8, internal_batch_size=2)
     ig_img_mag = attr_img.abs().sum().item()
     ig_meta_mag = attr_meta.abs().sum().item()
