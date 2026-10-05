@@ -15,18 +15,22 @@ from captum.attr import IntegratedGradients
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 CKPT_DIR = os.path.join(os.path.dirname(__file__), 'ckpts')
 
-SEX_OPTIONS = ['male', 'female']
+SEX_OPTIONS = ['female', 'male']
 SITE_OPTIONS = [
     'anterior torso', 'head/neck', 'lateral torso', 'lower extremity',
     'oral/genital', 'palms/soles', 'posterior torso', 'upper extremity',
 ]
-HX_OPTIONS = ['No', 'Yes']
+HX_OPTIONS = ['Not recorded', 'No', 'Yes']
 
-REF_COLS_14 = (
-    [f'sex_{s}' for s in SEX_OPTIONS] +
-    [f'anatom_site_general_{s}' for s in SITE_OPTIONS] +
-    ['personal_hx_mm_0.0', 'personal_hx_mm_1.0'] +
-    ['family_hx_mm_0.0', 'family_hx_mm_1.0']
+# Exact column order used in training (pd.get_dummies on string-cast columns,
+# missing values kept as their own 'nan' category): 18 dummy columns.
+REF_COLS = (
+    ['sex_female', 'sex_male', 'sex_nan'] +
+    [f'anatom_site_general_{s}' for s in
+     ['anterior torso', 'head/neck', 'lateral torso', 'lower extremity', 'nan',
+      'oral/genital', 'palms/soles', 'posterior torso', 'upper extremity']] +
+    ['personal_hx_mm_0.0', 'personal_hx_mm_1.0', 'personal_hx_mm_nan'] +
+    ['family_hx_mm_0.0', 'family_hx_mm_1.0', 'family_hx_mm_nan']
 )
 META_DIM = 20
 
@@ -85,16 +89,20 @@ transform = transforms.Compose([
 ])
 
 
+def _hx_key(v):
+    return {'Yes': '1.0', 'No': '0.0'}.get(v, 'nan')
+
+
 def encode_metadata(sex, site, personal_hx, family_hx, age, size_mm):
-    vec14 = np.zeros(len(REF_COLS_14), dtype='float32')
-    vec14[REF_COLS_14.index(f'sex_{sex}')] = 1.0
-    vec14[REF_COLS_14.index(f'anatom_site_general_{site}')] = 1.0
-    vec14[REF_COLS_14.index(f'personal_hx_mm_{"1.0" if personal_hx == "Yes" else "0.0"}')] = 1.0
-    vec14[REF_COLS_14.index(f'family_hx_mm_{"1.0" if family_hx == "Yes" else "0.0"}')] = 1.0
+    # Training layout: [age, size_mm, 18 one-hot columns in REF_COLS order]
+    vec = np.zeros(len(REF_COLS), dtype='float32')
+    vec[REF_COLS.index(f'sex_{sex}')] = 1.0
+    vec[REF_COLS.index(f'anatom_site_general_{site}')] = 1.0
+    vec[REF_COLS.index(f'personal_hx_mm_{_hx_key(personal_hx)}')] = 1.0
+    vec[REF_COLS.index(f'family_hx_mm_{_hx_key(family_hx)}')] = 1.0
     numeric = np.array([float(age), float(size_mm)], dtype='float32')
-    full_known = np.concatenate([numeric, vec14])
-    pad_len = META_DIM - len(full_known)
-    full20 = np.concatenate([full_known, np.zeros(pad_len, dtype='float32')])
+    full20 = np.concatenate([numeric, vec])
+    assert len(full20) == META_DIM
     return torch.tensor(full20).unsqueeze(0).to(DEVICE)
 
 
@@ -209,7 +217,7 @@ with col1:
 
         c1, c2 = st.columns(2)
         with c1:
-            sex = st.selectbox("Sex", SEX_OPTIONS, index=1)
+            sex = st.selectbox("Sex", SEX_OPTIONS, index=0)
             personal_hx = st.radio("Personal history of melanoma", HX_OPTIONS, horizontal=True)
             age = st.slider("Age", 0, 90, 60)
         with c2:
