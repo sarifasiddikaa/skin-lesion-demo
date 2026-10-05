@@ -1,5 +1,5 @@
 """
-Skin Lesion Risk Classifier — image + metadata fusion model.
+Skin lesion research prototype — image + metadata fusion models (Fusion and MetaBlock).
 """
 import os
 import numpy as np
@@ -66,12 +66,14 @@ class MetaBlockModel(nn.Module):
 def load_models():
     fusion_model = FusionModel(META_DIM).to(DEVICE)
     fusion_sd = torch.load(os.path.join(CKPT_DIR, 'fusion_seed1.pth'), map_location=DEVICE, weights_only=False)
-    fusion_model.load_state_dict(fusion_sd, strict=False)
+    res_f = fusion_model.load_state_dict(fusion_sd, strict=False)
+    print('FUSION load:', res_f)  # Manage app > logs: both key lists must be empty
     fusion_model.eval()
 
     mb_model = MetaBlockModel(META_DIM).to(DEVICE)
     mb_sd = torch.load(os.path.join(CKPT_DIR, 'metablock_seed1.pth'), map_location=DEVICE, weights_only=False)
-    mb_model.load_state_dict(mb_sd, strict=False)
+    res_m = mb_model.load_state_dict(mb_sd, strict=False)
+    print('METABLOCK load:', res_m)  # Manage app > logs: both key lists must be empty
     mb_model.eval()
     return fusion_model, mb_model
 
@@ -140,7 +142,7 @@ def predict(fusion_model, mb_model, image, sex, site, personal_hx, family_hx, ag
 # ============================= UI =============================
 
 st.set_page_config(
-    page_title="MELAXAI — Lesion Risk Classifier",
+    page_title="MelaXAI — Skin Lesion Research Prototype",
     page_icon="🩺",
     layout="wide",
 )
@@ -189,7 +191,7 @@ st.markdown("""
 st.markdown("""
 <div class="topbar">
     <span class="logo">🩺 MelaXAI </span>
-    <span class="tag">Skin lesion risk classifier</span>
+    <span class="tag">Skin lesion research prototype</span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -234,27 +236,27 @@ with col2:
                 with top_l:
                     st.markdown('<div class="section-label">Assessment result</div>', unsafe_allow_html=True)
                     pill_class = "risk-high" if is_high_risk else "risk-low"
-                    label = "Elevated risk — malignant features detected" if is_high_risk else "Low risk — benign features"
+                    label = "Model output: melanoma class (probability ≥ 0.5)" if is_high_risk else "Model output: non-melanoma class (probability < 0.5)"
                     dot = "●"
                     st.markdown(f'<span class="risk-pill {pill_class}">{dot} {label}</span>', unsafe_allow_html=True)
                 with top_r:
-                    st.metric("Risk score", f"{risk_score:.0%}")
+                    st.metric("Predicted melanoma probability", f"{risk_score:.0%}")
 
                 st.write("")
                 st.progress(risk_score)
 
                 mc1, mc2 = st.columns(2)
-                mc1.metric("Model A confidence", f"{r['fusion_prob']:.0%}")
-                mc2.metric("Model B confidence", f"{r['mb_prob']:.0%}")
+                mc1.metric("Fusion: melanoma probability", f"{r['fusion_prob']:.0%}")
+                mc2.metric("MetaBlock: melanoma probability", f"{r['mb_prob']:.0%}")
 
             st.write("")
             with st.expander("Model interpretability details"):
                 st.caption(
-                    "How much each input (image vs. patient metadata) drove this particular result, "
-                    "compared across three attribution methods."
+                    "Estimated contribution of each input (image vs. patient metadata) to this result, "
+                    "compared across three methods."
                 )
                 st.table({
-                    "Method": ["Ablation (measured)", "Integrated Gradients", "Metadata gate"],
+                    "Method": ["Ablation-derived reference (Fusion)", "Integrated Gradients (Fusion)", "MetaBlock gate (mean value)"],
                     "Image contribution": [f"{r['ablation_img']:+.3f}", f"{r['ig_img_frac']:.3f}", "–"],
                     "Metadata contribution": [f"{r['ablation_meta']:+.3f}", f"{1 - r['ig_img_frac']:.3f}", f"{r['gate_val']:.3f}"],
                 })
@@ -265,7 +267,7 @@ with col2:
 
 st.write("")
 st.markdown(
-    '<div class="footnote">For research and educational use only — not a certified diagnostic '
-    'device. Always consult a dermatologist for clinical evaluation.</div>',
+    '<div class="footnote">Public browser-based research prototype. Not clinically validated; not for clinical use or diagnosis. '
+    'Always consult a dermatologist for clinical evaluation.</div>',
     unsafe_allow_html=True,
 )
