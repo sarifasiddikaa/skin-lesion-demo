@@ -67,13 +67,13 @@ def load_models():
     fusion_model = FusionModel(META_DIM).to(DEVICE)
     fusion_sd = torch.load(os.path.join(CKPT_DIR, 'fusion_seed1.pth'), map_location=DEVICE, weights_only=False)
     res_f = fusion_model.load_state_dict(fusion_sd, strict=False)
-    print('FUSION load:', res_f)  # Manage app > logs: both key lists must be empty
+    print('FUSION load:', res_f, flush=True)  # Manage app > logs: both key lists must be empty
     fusion_model.eval()
 
     mb_model = MetaBlockModel(META_DIM).to(DEVICE)
     mb_sd = torch.load(os.path.join(CKPT_DIR, 'metablock_seed1.pth'), map_location=DEVICE, weights_only=False)
     res_m = mb_model.load_state_dict(mb_sd, strict=False)
-    print('METABLOCK load:', res_m)  # Manage app > logs: both key lists must be empty
+    print('METABLOCK load:', res_m, flush=True)  # Manage app > logs: both key lists must be empty
     mb_model.eval()
     return fusion_model, mb_model
 
