@@ -236,38 +236,33 @@ with col2:
             with st.spinner("Analyzing..."):
                 r = predict(fusion_model, mb_model, image, sex, site, personal_hx, family_hx, age, size_mm)
 
-            risk_score = (r['fusion_prob'] + r['mb_prob']) / 2
-            is_high_risk = risk_score >= 0.5
-
             with st.container(border=True):
-                top_l, top_r = st.columns([2, 1])
-                with top_l:
-                    st.markdown('<div class="section-label">Assessment result</div>', unsafe_allow_html=True)
-                    pill_class = "risk-high" if is_high_risk else "risk-low"
-                    label = "Model output: melanoma class (probability ≥ 0.5)" if is_high_risk else "Model output: non-melanoma class (probability < 0.5)"
-                    dot = "●"
-                    st.markdown(f'<span class="risk-pill {pill_class}">{dot} {label}</span>', unsafe_allow_html=True)
-                with top_r:
-                    st.metric("Predicted melanoma probability", f"{risk_score:.0%}")
-
-                st.write("")
-                st.progress(risk_score)
-
+                st.markdown('<div class="section-label">Model outputs</div>', unsafe_allow_html=True)
                 mc1, mc2 = st.columns(2)
-                mc1.metric("Fusion: melanoma probability", f"{r['fusion_prob']:.0%}")
-                mc2.metric("MetaBlock: melanoma probability", f"{r['mb_prob']:.0%}")
+                for col, name, prob in ((mc1, "Fusion", r['fusion_prob']), (mc2, "MetaBlock", r['mb_prob'])):
+                    with col:
+                        st.metric(f"{name}: melanoma probability", f"{prob:.0%}")
+                        st.progress(float(prob))
+                        high = prob >= 0.5
+                        pill_class = "risk-high" if high else "risk-low"
+                        label = "melanoma class (p ≥ 0.5)" if high else "non-melanoma class (p < 0.5)"
+                        st.markdown(f'<span class="risk-pill {pill_class}">● {label}</span>', unsafe_allow_html=True)
 
             st.write("")
             with st.expander("Model interpretability details"):
                 st.caption(
-                    "Estimated contribution of each input (image vs. patient metadata) to this result, "
-                    "compared across three methods."
+                    "Attribution of this output to the image and the patient metadata, "
+                    "from two methods applied to the Fusion model."
                 )
                 st.table({
-                    "Method": ["Ablation-derived reference (Fusion)", "Integrated Gradients (Fusion)", "MetaBlock gate (mean value)"],
-                    "Image contribution": [f"{r['ablation_img']:+.3f}", f"{r['ig_img_frac']:.3f}", "–"],
-                    "Metadata contribution": [f"{r['ablation_meta']:+.3f}", f"{1 - r['ig_img_frac']:.3f}", f"{r['gate_val']:.3f}"],
+                    "Method": ["Ablation-derived reference (Fusion)", "Integrated Gradients (Fusion)"],
+                    "Image attribution": [f"{r['ablation_img']:+.3f}", f"{r['ig_img_frac']:.3f}"],
+                    "Metadata attribution": [f"{r['ablation_meta']:+.3f}", f"{1 - r['ig_img_frac']:.3f}"],
                 })
+                st.caption(
+                    f"MetaBlock mean gate activation: {r['gate_val']:.3f}. "
+                    "This is a gate value, not a measure of metadata contribution."
+                )
     else:
         with st.container(border=True):
             st.markdown('<div class="section-label">Assessment result</div>', unsafe_allow_html=True)
